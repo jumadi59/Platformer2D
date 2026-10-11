@@ -1,0 +1,45 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.example.platformer'
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.example.platformer"
+        minSdk 23
+        targetSdk 36
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            debuggable false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    sourceSets {
+        main {
+            assets.srcDirs += project(':game-shared').file('assets')
+        }
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.17.0'
+    implementation 'androidx.appcompat:appcompat:1.7.1'
+
+    implementation "${providers.gradleProperty('ENGINE_GROUP').get()}:${providers.gradleProperty('ENGINE_ARTIFACT').get()}-android:${providers.gradleProperty('ENGINE_VERSION').get()}"
+    implementation project(':game-shared')
+}
+
+apply from: rootProject.file('gradle/asset-protection/assets.gradle')

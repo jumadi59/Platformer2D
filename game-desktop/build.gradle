@@ -1,0 +1,49 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'application'
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+def osName = System.getProperty('os.name').toLowerCase()
+
+dependencies {
+    implementation "${providers.gradleProperty('ENGINE_GROUP').get()}:${providers.gradleProperty('ENGINE_ARTIFACT').get()}-desktop:${providers.gradleProperty('ENGINE_VERSION').get()}"
+    implementation project(':game-shared')
+    // Key constants are needed at compile time; the engine supplies GLFW at runtime.
+    compileOnly 'org.lwjgl:lwjgl-glfw:3.4.2'
+}
+
+sourceSets {
+    main {
+        resources.srcDir project(':game-shared').file('assets')
+    }
+}
+
+application {
+    mainClass = 'com.example.platformer.MainKt'
+    def jvmArgs = []
+    if (osName.contains('mac')) {
+        jvmArgs << '-XstartOnFirstThread'
+    }
+    applicationDefaultJvmArgs = jvmArgs
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+apply from: rootProject.file('gradle/asset-protection/assets.gradle')
+
+// Authored Main scene/HUD render acceptance; never changes the startup scene.
+tasks.register('previewMain', JavaExec) {
+    dependsOn 'classes'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.platformer.MainScenePreviewKt'
+    args project(':game-shared').file('assets').absolutePath, rootProject.file('docs/evidence/main-redesign').absolutePath
+    jvmArgs '-Djava.awt.headless=true'
+    if (osName.contains('mac')) jvmArgs '-XstartOnFirstThread'
+}

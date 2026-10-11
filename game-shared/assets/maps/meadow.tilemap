@@ -1,0 +1,70 @@
+tilemap: Meadow Run
+version: 1
+schemaVersion: 2
+tileWidth: 70
+tileHeight: 70
+tileSpacing: 0
+orientation: ORTHOGONAL
+infinite: true
+collisionEnabled: true
+
+tileset: Grass
+  image: 
+  tileWidth: 70
+  tileHeight: 70
+  firstGid: 1
+  tileCount: 10
+  columns: 0
+  mode: IMAGE_COLLECTION
+  nextLocalId: 10
+  property: anVtYm94Lm5leHRMb2NhbElk|aW50||MTA
+  tile: 0
+    image: ../tiles/grassLeft.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 1
+    image: ../tiles/grassMid.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 2
+    image: ../tiles/grassRight.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 3
+    image: ../tiles/grassCliffLeft.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 4
+    image: ../tiles/grassCliffRight.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 5
+    image: ../tiles/grassHalfRight.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 6
+    image: ../tiles/grassHalfMid.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 7
+    image: ../tiles/grassHalfLeft.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 8
+    image: ../tiles/grassCenter.png
+    imageWidth: 70
+    imageHeight: 70
+  tile: 9
+    image: ../tiles/grassHalf.png
+    imageWidth: 70
+    imageHeight: 70
+
+layer: Ground
+  id: ground
+  width: 48
+  height: 11
+  originColumn: -2
+  originRow: -6
+  collision: true
+  data: 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,2,2,2,2,2,2,2,2,2,2,2,2,2,0,2,2,2,0,4,2,2,2,2,2,2,2,2,2,2,0,2,2,2,2,2,2,0,0,4,2,2,2,2,2,2,2,2,9,9,9,9,9,9,9,9,9,9,9,9,9,9,0,9,9,9,0,0,9,9,9,9,9,9,9,9,9,9,0,9,9,9,9,9,9,0,0,0,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,0,9,9,9,0,0,9,9,9,9,9,9,9,9,9,9,0,9,9,9,9,9,9,0,0,0,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,0,9,9,9,0,0,9,9,9,9,9,9,9,9,9,9,0,9,9,9,9,9,9,0,0,0,9,9,9,9,9,9,9,9,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+

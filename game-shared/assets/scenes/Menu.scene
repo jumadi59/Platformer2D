@@ -1,0 +1,43 @@
+scene: Menu
+sceneId: 8b70878c-ffab-4dc4-93d4-004e469e2b00
+version: 3
+
+layer: default
+  name: UI
+
+settings
+  targetResolutionWidth: 960
+  targetResolutionHeight: 540
+  clearColor: 0.08,0.16,0.12,1.0
+  backgroundMode: TEXTURE
+  backgroundTexture: bg/bg_shroom.png
+  backgroundScaleMode: COVER
+  backgroundTint: 0.55,0.65,0.55,1.0
+
+entity: main_camera
+  Transform2D
+    x: 480
+    y: 270
+  Camera
+    viewportWidth: 960
+    viewportHeight: 540
+    isPrimary: true
+    zoom: 1
+  EditorMetadata
+    name: UI Camera
+
+entity: menu
+  Transform2D
+    x: 0
+    y: 0
+  EditorMetadata
+    name: Menu UI
+  UiCanvas
+    asset: ui/layouts/menu.jui
+    zIndex: 100
+    inputEnabled: true
+    enabled: true
+    visible: true
+    presentationScalePolicy: ADAPTIVE
+  Behavior
+    behaviorId: MenuBehavior

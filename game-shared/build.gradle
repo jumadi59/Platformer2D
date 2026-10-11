@@ -1,0 +1,105 @@
+plugins {
+    id 'org.jetbrains.kotlin.jvm'
+    id 'java-library'
+}
+
+kotlin {
+    jvmToolchain(17)
+}
+
+dependencies {
+    api "${providers.gradleProperty('ENGINE_GROUP').get()}:${providers.gradleProperty('ENGINE_ARTIFACT').get()}-core:${providers.gradleProperty('ENGINE_VERSION').get()}"
+    testImplementation 'org.jetbrains.kotlin:kotlin-test-junit:2.3.10'
+    testImplementation "${providers.gradleProperty('ENGINE_GROUP').get()}:${providers.gradleProperty('ENGINE_ARTIFACT').get()}-desktop:${providers.gradleProperty('ENGINE_VERSION').get()}"
+}
+
+tasks.named('test') {
+    systemProperty 'java.awt.headless', 'true'
+    systemProperty 'platformer.assets', file('assets').absolutePath
+}
+
+sourceSets.test.resources.srcDir('assets')
+
+// Added by Jumbox Engine Editor - exports a classpath/resource manifest the editor's dynamic
+// Play-mode class loader reads, so project script dependency JARs and resources are found
+// without the editor guessing directory conventions (SCRIPT_EDITOR_IMPLEMENTATION_PLAN.md M1).
+tasks.register('jumboxScriptManifest') {
+    dependsOn 'classes'
+    inputs.files(sourceSets.main.output.classesDirs).withPropertyName('compiledClasses')
+    inputs.files(sourceSets.main.output.resourcesDir).withPropertyName('compiledResources')
+    inputs.files(configurations.runtimeClasspath).withPropertyName('runtimeClasspath')
+    def manifestFile = layout.buildDirectory.file('jumbox/script-manifest.json')
+    outputs.file(manifestFile)
+    doLast {
+        def classesDirs = sourceSets.main.output.classesDirs.files*.absolutePath
+        def resourceDirs = sourceSets.main.resources.srcDirs*.absolutePath
+        def runtimeJars = configurations.runtimeClasspath.files.findAll { it.name.endsWith('.jar') }*.absolutePath
+        def json = groovy.json.JsonOutput.toJson([
+            revision: System.currentTimeMillis().toString(),
+            classesDirs: classesDirs,
+            resourceDirs: resourceDirs,
+            runtimeJars: runtimeJars
+        ])
+        def target = manifestFile.get().asFile
+        target.parentFile.mkdirs()
+        target.text = json
+    }
+}
+tasks.named('classes') { finalizedBy 'jumboxScriptManifest' }
+
+// Added by Jumbox Engine Editor - exports the compiled behavior schema catalog the Inspector
+// reads for typed properties, instead of guessing from source text
+// (SCRIPT_EDITOR_IMPLEMENTATION_PLAN.md M2).
+tasks.register('jumboxScriptCatalog') {
+    dependsOn 'classes'
+    inputs.files(sourceSets.main.output.classesDirs).withPropertyName('compiledBehaviorClasses')
+    inputs.files(configurations.runtimeClasspath).withPropertyName('behaviorRuntimeClasspath')
+    def catalogFile = layout.buildDirectory.file('jumbox/script-catalog.json')
+    outputs.file(catalogFile)
+    doLast {
+        def classesDirs = sourceSets.main.output.classesDirs.files
+        def urls = (classesDirs + configurations.runtimeClasspath.files).collect { it.toURI().toURL() } as URL[]
+        def loader = new URLClassLoader(urls, getClass().classLoader)
+        def entries = []
+        Class entityBehaviorClass = null
+        Class schemaBehaviorClass = null
+        try { entityBehaviorClass = loader.loadClass('com.jumbox.game.core.scene.EntityBehavior') } catch (Throwable ignored) {}
+        if (entityBehaviorClass != null) {
+            try { schemaBehaviorClass = loader.loadClass('com.jumbox.game.core.scene.SchemaBehavior') } catch (Throwable ignored) {}
+            classesDirs.each { dir ->
+                if (!dir.exists()) return
+                dir.eachFileRecurse(groovy.io.FileType.FILES) { f ->
+                    if (!f.name.endsWith('.class') || f.name.contains('$')) return
+                    def rel = dir.toPath().relativize(f.toPath()).toString()
+                    def className = rel.substring(0, rel.length() - 6).replace(File.separator, '.')
+                    try {
+                        def clazz = loader.loadClass(className)
+                        if (entityBehaviorClass.isAssignableFrom(clazz) && clazz != entityBehaviorClass &&
+                            !java.lang.reflect.Modifier.isAbstract(clazz.modifiers) && !clazz.isInterface()) {
+                            def ctor = clazz.getDeclaredConstructor()
+                            ctor.accessible = true
+                            def instance = ctor.newInstance()
+                            def simpleName = clazz.simpleName
+                            def isSchema = schemaBehaviorClass != null && schemaBehaviorClass.isAssignableFrom(clazz)
+                            def descriptorMap
+                            if (isSchema) {
+                                def m = clazz.getMethod('exportDescriptorAsMap', String.class, String.class, String.class)
+                                descriptorMap = m.invoke(instance, simpleName, simpleName, ('Custom behavior ' + simpleName))
+                            } else {
+                                descriptorMap = [id: simpleName, displayName: simpleName, description: ('Custom behavior ' + simpleName), properties: []]
+                            }
+                            entries << [className: className, legacy: !isSchema, descriptor: descriptorMap]
+                        }
+                    } catch (Throwable ignored) {
+                        // Skip this one class - one broken script must not blank the whole catalog.
+                    }
+                }
+            }
+        }
+        def json = groovy.json.JsonOutput.toJson([revision: System.currentTimeMillis().toString(), behaviors: entries])
+        def target = catalogFile.get().asFile
+        target.parentFile.mkdirs()
+        target.text = json
+    }
+}
+tasks.named('classes') { finalizedBy 'jumboxScriptCatalog' }

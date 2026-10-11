@@ -1,0 +1,16 @@
+projectId: a5616dd8-94b1-4d26-9268-456516f7c4a9
+name: Platformer2D
+displayName: Platformer2D
+packageId: com.example.platformer
+engineVersion: 0.7.16-SNAPSHOT
+defaultScenePath: game-shared/assets/scenes/Menu.scene
+assetRoot: game-shared/assets
+targetPlatforms: DESKTOP,ANDROID
+scenePaths: game-shared/assets/scenes/Menu.scene|game-shared/assets/scenes/Main.scene|game-shared/assets/scenes/Settings.scene
+activeScenePath: game-shared/assets/scenes/Main.scene
+resolutionWidth: 960
+resolutionHeight: 540
+orientation: LANDSCAPE
+buildProfile: DEBUG
+inputActionMap: move_left=KEY_A,KEY_LEFT;move_right=KEY_D,KEY_RIGHT;move_up=KEY_W,KEY_UP;move_down=KEY_S,KEY_DOWN;jump=KEY_SPACE;restart=KEY_R;fire=BUTTON_PRIMARY;pause=KEY_ESCAPE
+manifestVersion: 3

@@ -1,0 +1,159 @@
+import java.security.MessageDigest
+import java.security.SecureRandom
+import javax.crypto.Cipher
+import javax.crypto.spec.GCMParameterSpec
+import javax.crypto.spec.SecretKeySpec
+
+/** Shared by this checkout and exported projects. Format matches EncryptedAssetPack v1. */
+abstract class ProtectGameAssets extends DefaultTask {
+    @InputFiles @PathSensitive(PathSensitivity.RELATIVE)
+    abstract ConfigurableFileCollection getGameAssetDirectories()
+
+    @Optional @InputDirectory @PathSensitive(PathSensitivity.RELATIVE)
+    abstract DirectoryProperty getInputDirectory()
+
+    @OutputDirectory abstract DirectoryProperty getOutputDirectory()
+    @OutputDirectory abstract DirectoryProperty getKeySourceDirectory()
+
+    @TaskAction
+    void protect() {
+        File output = outputDirectory.get().asFile
+        File sources = keySourceDirectory.get().asFile
+        output.deleteDir()
+        sources.deleteDir()
+        output.mkdirs()
+        sources.mkdirs()
+        def selected = new TreeMap<String, File>()
+        gameAssetDirectories.files.each { root ->
+            if (root.isDirectory()) root.eachFileRecurse { file ->
+                if (file.isFile()) {
+                    String path = root.toPath().relativize(file.toPath()).toString().replace('\\', '/')
+                    if (path == '__jumbox_assets__/game.pak') {
+                        throw new GradleException('Reserved asset path: ' + path)
+                    }
+                    selected[path] = file
+                }
+            }
+        }
+        // Transform merged Android assets, preserving SDK-owned assets accessed outside the engine.
+        // Desktop inputs are the application's own resource roots.
+        if (inputDirectory.isPresent()) {
+            File merged = inputDirectory.get().asFile
+            def names = new HashSet(selected.keySet())
+            selected.clear()
+            merged.eachFileRecurse { file ->
+                if (file.isFile()) {
+                    String path = merged.toPath().relativize(file.toPath()).toString().replace('\\', '/')
+                    if (names.contains(path)) selected[path] = file
+                    else ProtectGameAssets.copyPlain(file, new File(output, path))
+                }
+            }
+        }
+        // License notices and JVM service metadata must stay readable by their respective consumers.
+        selected.keySet().toList().each { path ->
+            if (path.startsWith('META-INF/') || path.startsWith('licenses/') ||
+                    path.tokenize('/').last().toUpperCase().startsWith('LICENSE')) {
+                ProtectGameAssets.copyPlain(selected.remove(path), new File(output, path))
+            }
+        }
+        if (selected.size() > 100000) throw new GradleException('Too many assets (maximum 100000).')
+        def random = new SecureRandom()
+        byte[] key = new byte[32]
+        byte[] mask = new byte[32]
+        random.nextBytes(key)
+        random.nextBytes(mask)
+        byte[] hidden = new byte[32]
+        for (int i = 0; i < 32; i++) hidden[i] = (byte) (key[i] ^ mask[i])
+        File keyFile = new File(sources, 'com/jumbox/game/generated/AssetPackKey.java')
+        keyFile.parentFile.mkdirs()
+        keyFile.text = '''package com.jumbox.game.generated;
+/** Generated offline asset key. Obfuscation is a deterrent, not a secret store. */
+public final class AssetPackKey {
+    private AssetPackKey() {}
+    public static byte[] key() {
+        byte[] a = new byte[] {''' + mask.collect { '(byte)' + it }.join(',') + '''};
+        byte[] b = new byte[] {''' + hidden.collect { '(byte)' + it }.join(',') + '''};
+        for (int i = 0; i < a.length; i++) a[i] ^= b[i];
+        return a;
+    }
+}
+'''
+        // Fixed-size index: SHA-256(path), absolute offset, encrypted length, unique 96-bit nonce.
+        // Assets are authenticated individually before any plaintext is handed to the decoder.
+        File pack = new File(output, '__jumbox_assets__/game.pak')
+        pack.parentFile.mkdirs()
+        new RandomAccessFile(pack, 'rw').withCloseable { archive ->
+            archive.writeInt(0x4a425041) // JBPA
+            archive.writeInt(1)
+            archive.writeInt(selected.size())
+            long offset = 12L + selected.size() * 56L
+            archive.setLength(offset)
+            int index = 0
+            byte[] prefix = new byte[8]
+            random.nextBytes(prefix)
+            selected.each { path, file ->
+                if (file.length() > 268435456L) throw new GradleException('Asset exceeds 256 MiB: ' + path)
+                byte[] digest = MessageDigest.getInstance('SHA-256').digest(path.getBytes('UTF-8'))
+                byte[] nonce = java.nio.ByteBuffer.allocate(12).put(prefix).putInt(index).array()
+                def cipher = Cipher.getInstance('AES/GCM/NoPadding')
+                cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, 'AES'), new GCMParameterSpec(128, nonce))
+                cipher.updateAAD(digest)
+                byte[] encrypted = cipher.doFinal(file.bytes)
+                archive.seek(12L + index * 56L)
+                archive.write(digest)
+                archive.writeLong(offset)
+                archive.writeInt(encrypted.length)
+                archive.write(nonce)
+                archive.seek(offset)
+                archive.write(encrypted)
+                offset += encrypted.length
+                index++
+            }
+        }
+        Arrays.fill(key, (byte) 0)
+    }
+
+    static void copyPlain(File source, File target) {
+        target.parentFile.mkdirs()
+        source.withInputStream { input -> target.withOutputStream { output -> output << input } }
+    }
+}
+
+plugins.withId('com.android.application') {
+    android.buildTypes.release {
+        minifyEnabled true
+        shrinkResources true
+        debuggable false
+    }
+    androidComponents.onVariants(androidComponents.selector().withBuildType('release')) { variant ->
+        def protect = tasks.register("protect${variant.name.capitalize()}GameAssets", ProtectGameAssets) {
+            gameAssetDirectories.from(android.sourceSets.collectMany { it.assets.srcDirs })
+            keySourceDirectory.set(layout.buildDirectory.dir("generated/assetProtection/${variant.name}/java"))
+        }
+        // Resolve through AGP's classloader so this same script also works in desktop-only projects.
+        def assetsArtifact = androidComponents.class.classLoader
+                .loadClass('com.android.build.api.artifact.SingleArtifact$ASSETS').getField('INSTANCE').get(null)
+        variant.artifacts.use(protect)
+                .wiredWithDirectories({ it.inputDirectory }, { it.outputDirectory })
+                .toTransform(assetsArtifact)
+        variant.sources.java.addGeneratedSourceDirectory(protect, { it.keySourceDirectory })
+    }
+}
+
+plugins.withId('application') {
+    def originalRoots = sourceSets.main.resources.srcDirs.toList()
+    def protect = tasks.register('protectGameAssets', ProtectGameAssets) {
+        gameAssetDirectories.from(originalRoots)
+        outputDirectory.set(layout.buildDirectory.dir('generated/assetProtection/desktop/resources'))
+        keySourceDirectory.set(layout.buildDirectory.dir('generated/assetProtection/desktop/java'))
+    }
+    sourceSets.main.resources.setSrcDirs([protect.flatMap { it.outputDirectory }])
+    sourceSets.main.java.srcDir(protect.flatMap { it.keySourceDirectory })
+}
+
+// Development overrides are opt-in for Gradle run; launch scripts never embed source paths.
+plugins.withId('application') {
+    tasks.named('run', JavaExec) {
+        systemProperty 'jumbox.assets.development', 'true'
+    }
+}
