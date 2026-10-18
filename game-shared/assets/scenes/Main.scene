@@ -110,6 +110,43 @@ entity: terrain
     category: 1
     mask: -1
 
+entity: goal
+  Transform2D
+    x: 3169.5664
+    y: 384.279
+    rotation: 0.0
+    scaleX: 1.0
+    scaleY: 1.0
+
+  EditorMetadata
+    name: Goal / Green Flag
+
+  RigidBody
+    bodyType: STATIC
+
+  CollisionShape2D
+    shape: BOX
+    width: 68.0
+    height: 70.0
+    isSensor: true
+    category: 1
+    mask: -1
+
+  AnimatedSprite2D
+    framesAsset: animations/animated_flag_green.spriteframes
+    animation: default
+    autoplay: true
+    playing: false
+    speedScale: 1.0
+    frame: 0
+    flipX: false
+    flipY: false
+    tint: 1.0,1.0,1.0,1.0
+    originX: 0.5
+    originY: 0.5
+    drawOrder: 0
+    enabled: true
+
 entity: entity-22d7feea-1ede-4b2b-8b19-d5eb5fd27b29
   Transform2D
     x: 0.0
@@ -142,7 +179,7 @@ entity: mushroom
     height: 64.0
     originX: 0.5
     originY: 0.5
-    drawOrder: 11
+    drawOrder: 2
     enabled: true
 
 entity: plant-1
@@ -166,51 +203,95 @@ entity: plant-1
     height: 64.0
     originX: 0.5
     originY: 0.5
-    drawOrder: 11
+    drawOrder: 2
     enabled: true
 
-entity: player
+entity: plant-2
   Transform2D
-    x: 56.0
-    y: 401.75
+    x: 776.8634
+    y: 381.8074
     rotation: 0.0
     scaleX: 1.0
     scaleY: 1.0
 
   EditorMetadata
-    name: Player / Platform Controller
+    parent: entity-22d7feea-1ede-4b2b-8b19-d5eb5fd27b29
+    name: plant 2
+
+  Sprite
+    texture: items/plant.png
+    tint: 1.0,1.0,1.0,1.0
+    flipX: false
+    flipY: false
+    width: 64.0
+    height: 64.0
+    originX: 0.5
+    originY: 0.5
+    drawOrder: 2
+    enabled: true
+
+entity: plant-3
+  Transform2D
+    x: 1076.5736
+    y: 379.08307
+    rotation: 0.0
+    scaleX: 1.0
+    scaleY: 1.0
+
+  EditorMetadata
+    parent: entity-22d7feea-1ede-4b2b-8b19-d5eb5fd27b29
+    name: plant 3
+
+  Sprite
+    texture: items/plant.png
+    tint: 1.0,1.0,1.0,1.0
+    flipX: false
+    flipY: false
+    width: 64.0
+    height: 64.0
+    originX: 0.5
+    originY: 0.5
+    drawOrder: 2
+    enabled: true
+
+entity: enemy-3
+  Transform2D
+    x: 1790.0
+    y: 364.2277
+    rotation: 0.0
+    scaleX: 1.0
+    scaleY: 1.0
+
+  EditorMetadata
+    name: Slime Patrol 3
 
   AnimatedSprite2D
-    framesAsset: animations/player.spriteframes
-    animation: idle
+    framesAsset: animations/slime.spriteframes
+    animation: walk
     autoplay: true
-    playing: false
-    drawOrder: 10
+    playing: true
+    drawOrder: 8
+    flipX: false
 
   RigidBody
-    bodyType: DYNAMIC
-    gravityScale: 100.0
+    bodyType: KINEMATIC
+    gravityScale: 0.0
     fixedRotation: true
-    linearDamping: 0.0
-    ccdMode: BULLET
 
   CollisionShape2D
     shape: BOX
-    width: 42.0
-    height: 86.0
-    friction: 0.0
-    restitution: 0.0
-    isSensor: false
+    width: 48.0
+    height: 32.0
+    isSensor: true
     category: 1
     mask: -1
 
   Behavior
-    behaviorId: PlayerBehavior
-    moveSpeed: 280
-    jumpSpeed: 560
-    spawnX: 56.0
-    spawnY: 401.75
-    requiredGems: 6
+    behaviorId: EnemyBehavior
+    minX: 1690
+    maxX: 1890
+    speed: 64
+    floatHeight: 0
 
 entity: entity-a58bd5dc-0c0b-4156-858e-4e7cd73225cc
   Transform2D
@@ -280,6 +361,12 @@ entity: gem-2
     isSensor: true
     category: 1
     mask: -1
+
+  Light
+    radius: 50.0
+    color: 1.0,1.0,1.0,1.0
+    intensity: 1.0
+    castsShadows: false
 
 entity: gem-3
   Transform2D
@@ -450,7 +537,7 @@ entity: hazard
     texture: items/spikes.png
     width: 70.0
     height: 28.0
-    drawOrder: 5
+    drawOrder: 3
 
   RigidBody
     bodyType: STATIC
@@ -462,63 +549,6 @@ entity: hazard
     isSensor: true
     category: 1
     mask: -1
-
-entity: goal
-  Transform2D
-    x: 3169.5664
-    y: 384.279
-    rotation: 0.0
-    scaleX: 1.0
-    scaleY: 1.0
-
-  EditorMetadata
-    name: Goal / Green Flag
-
-  RigidBody
-    bodyType: STATIC
-
-  CollisionShape2D
-    shape: BOX
-    width: 68.0
-    height: 70.0
-    isSensor: true
-    category: 1
-    mask: -1
-
-  AnimatedSprite2D
-    framesAsset: animations/animated_flag_green.spriteframes
-    animation: default
-    autoplay: true
-    playing: false
-    speedScale: 1.0
-    frame: 0
-    flipX: false
-    flipY: false
-    tint: 1.0,1.0,1.0,1.0
-    originX: 0.5
-    originY: 0.5
-    drawOrder: 0
-    enabled: true
-
-entity: hud
-  Transform2D
-    x: 0.0
-    y: 0.0
-    rotation: 0.0
-    scaleX: 1.0
-    scaleY: 1.0
-
-  EditorMetadata
-    layer: hud
-    name: Meadow HUD / Health Gems Enemies Timer
-
-  UiCanvas
-    asset: ui/layouts/platformer_hud.jui
-    zIndex: 100
-    inputEnabled: true
-    enabled: true
-    visible: true
-    presentationScalePolicy: ADAPTIVE
 
 entity: enemy-1
   Transform2D
@@ -536,7 +566,7 @@ entity: enemy-1
     animation: walk
     autoplay: true
     playing: false
-    drawOrder: 8
+    drawOrder: 2
     flipX: false
 
   RigidBody
@@ -575,7 +605,7 @@ entity: enemy-2
     animation: walk
     autoplay: true
     playing: false
-    drawOrder: 8
+    drawOrder: 2
 
   RigidBody
     bodyType: KINEMATIC
@@ -597,45 +627,6 @@ entity: enemy-2
     speed: 82
     floatHeight: 18
 
-entity: enemy-3
-  Transform2D
-    x: 1790.0
-    y: 364.2277
-    rotation: 0.0
-    scaleX: 1.0
-    scaleY: 1.0
-
-  EditorMetadata
-    name: Slime Patrol 3
-
-  AnimatedSprite2D
-    framesAsset: animations/slime.spriteframes
-    animation: walk
-    autoplay: true
-    playing: true
-    drawOrder: 8
-    flipX: false
-
-  RigidBody
-    bodyType: KINEMATIC
-    gravityScale: 0.0
-    fixedRotation: true
-
-  CollisionShape2D
-    shape: BOX
-    width: 48.0
-    height: 32.0
-    isSensor: true
-    category: 1
-    mask: -1
-
-  Behavior
-    behaviorId: EnemyBehavior
-    minX: 1690
-    maxX: 1890
-    speed: 64
-    floatHeight: 0
-
 entity: enemy-4
   Transform2D
     x: 2260.0
@@ -652,7 +643,7 @@ entity: enemy-4
     animation: walk
     autoplay: true
     playing: true
-    drawOrder: 8
+    drawOrder: 2
 
   RigidBody
     bodyType: KINEMATIC
@@ -674,51 +665,188 @@ entity: enemy-4
     speed: 82
     floatHeight: 18
 
-entity: plant-2
+entity: player
   Transform2D
-    x: 776.8634
-    y: 381.8074
+    x: 56.0
+    y: 401.75
     rotation: 0.0
     scaleX: 1.0
     scaleY: 1.0
 
   EditorMetadata
-    parent: entity-22d7feea-1ede-4b2b-8b19-d5eb5fd27b29
-    name: plant 2
+    name: Player / Platform Controller
 
-  Sprite
-    texture: items/plant.png
-    tint: 1.0,1.0,1.0,1.0
-    flipX: false
-    flipY: false
-    width: 64.0
-    height: 64.0
-    originX: 0.5
-    originY: 0.5
-    drawOrder: 11
-    enabled: true
+  AnimatedSprite2D
+    framesAsset: animations/player.spriteframes
+    animation: idle
+    autoplay: true
+    playing: false
+    drawOrder: 1
 
-entity: plant-3
+  RigidBody
+    bodyType: DYNAMIC
+    gravityScale: 100.0
+    fixedRotation: true
+    linearDamping: 0.0
+    ccdMode: BULLET
+
+  CollisionShape2D
+    shape: BOX
+    width: 42.0
+    height: 86.0
+    friction: 0.0
+    restitution: 0.0
+    isSensor: false
+    category: 1
+    mask: -1
+
+  Behavior
+    behaviorId: PlayerBehavior
+    moveSpeed: 280
+    jumpSpeed: 560
+    spawnX: 56.0
+    spawnY: 401.75
+    requiredGems: 6
+
+  Light
+    radius: 300.0
+    color: 1.0,1.0,1.0,1.0
+    intensity: 1.0
+    castsShadows: false
+
+entity: gem-7
   Transform2D
-    x: 1076.5736
-    y: 379.08307
+    x: 2923.315
+    y: 378.60876
     rotation: 0.0
     scaleX: 1.0
     scaleY: 1.0
 
   EditorMetadata
-    parent: entity-22d7feea-1ede-4b2b-8b19-d5eb5fd27b29
-    name: plant 3
+    parent: entity-a58bd5dc-0c0b-4156-858e-4e7cd73225cc
+    name: Gem 7
 
   Sprite
-    texture: items/plant.png
-    tint: 1.0,1.0,1.0,1.0
-    flipX: false
-    flipY: false
-    width: 64.0
-    height: 64.0
-    originX: 0.5
-    originY: 0.5
-    drawOrder: 11
+    texture: items/gemBlue.png
+    width: 36.0
+    height: 36.0
+    drawOrder: 5
+
+  RigidBody
+    bodyType: STATIC
+
+  CollisionShape2D
+    shape: BOX
+    width: 36.0
+    height: 36.0
+    isSensor: true
+    category: 1
+    mask: -1
+
+entity: hud
+  Transform2D
+    x: 0.0
+    y: 0.0
+    rotation: 0.0
+    scaleX: 1.0
+    scaleY: 1.0
+
+  EditorMetadata
+    layer: hud
+    name: Meadow HUD / Health Gems Enemies Timer
+
+  UiCanvas
+    asset: ui/layouts/platformer_hud.jui
+    zIndex: 100
+    inputEnabled: true
     enabled: true
+    visible: true
+    presentationScalePolicy: ADAPTIVE
+    renderMode: CACHED
+
+entity: gameplay-controls
+  Transform2D
+    x: 0.0
+    y: 0.0
+    rotation: 0.0
+    scaleX: 1.0
+    scaleY: 1.0
+
+  EditorMetadata
+    layer: hud
+    name: Meadow Controls / Live Joystick
+
+  UiCanvas
+    asset: ui/layouts/platformer_controls.jui
+    zIndex: 101
+    inputEnabled: true
+    enabled: true
+    visible: true
+    showOnTrigger: pause_close
+    hideOnTrigger: pause_open
+    presentationScalePolicy: ADAPTIVE
+    renderMode: DIRECT
+
+entity: pause-menu
+  Transform2D
+    x: 0.0
+    y: 0.0
+    rotation: 0.0
+    scaleX: 1.0
+    scaleY: 1.0
+
+  EditorMetadata
+    layer: hud
+    name: Pause Dialog / Resume Retry Settings Menu
+
+  UiCanvas
+    asset: ui/layouts/pause_menu.jui
+    zIndex: 200
+    inputEnabled: true
+    enabled: true
+    visible: false
+    showOnTrigger: pause_open
+    hideOnTrigger: pause_close
+    presentationScalePolicy: ADAPTIVE
+    renderMode: CACHED
+
+  Behavior
+    behaviorId: PauseMenuBehavior
+
+entity: entity-64019565-0595-4f79-9226-1d3e9b744439
+  Transform2D
+    x: 404.45486
+    y: 524.3052
+    rotation: -89.946754
+    scaleX: 1.0
+    scaleY: 1.0
+
+  EditorMetadata
+    name: SpotLight
+
+  SpotLight2D
+    enabled: true
+    radius: 208.0
+    color: 1.0,1.0,1.0,1.0
+    intensity: 0.80645156
+    falloff: 2.0
+    directionDegrees: 0.0
+    innerConeDegrees: 23.096773
+    outerConeDegrees: 33.283062
+
+entity: entity-bd2edade-7fc5-4046-9a43-801374e42b79
+  Transform2D
+    x: 0.0
+    y: 0.0
+    rotation: 0.0
+    scaleX: 1.0
+    scaleY: 1.0
+
+  EditorMetadata
+    name: Sun
+
+  DirectionalLight2D
+    enabled: true
+    color: 1.0,1.0,1.0,1.0
+    intensity: 0.4
 

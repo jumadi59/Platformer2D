@@ -17,7 +17,10 @@ class Platformer2DGame : Game() {
     }
 
     override fun update(delta: Float) {
-        super.update(delta)
+        // The pause dialog keeps its UI live (runner.pause() would freeze UI input too), so freeze
+        // gameplay by advancing the active scene with zero time while the dialog is open.
+        val frozen = (getScene() as? RuntimeScene)?.runner?.let(PauseMenuBehavior::isOpen) == true
+        super.update(if (frozen) 0f else delta)
         installPointerAdapter()
     }
 
@@ -25,8 +28,8 @@ class Platformer2DGame : Game() {
 
     private fun installPointerAdapter() {
         val scene = getScene() as? RuntimeScene ?: return
-        // 0.7.16's TouchHandler sends bottom-origin coordinates, while
-        // RuntimeScene expects top-origin before its own UI conversion.
+        // Preserve the native pointer contract. TouchHandler and Layer already perform the
+        // screen/game conversions; this ownership wrapper must not flip position or delta again.
         if (Engine.game.input.touchController === scene) {
             pointerAdapter = RuntimePointerAdapter(scene)
             Engine.game.input.touchController = pointerAdapter
@@ -78,8 +81,10 @@ class Platformer2DGame : Game() {
     // Desktop Escape / Android Back are host navigation commands, not action-map keys.
     override fun back(): Boolean {
         val current = getScene() as? RuntimeScene
-        if (current?.sceneDef?.entities?.any { it.id == "player" } == true) {
-            return !current.runner.sceneNavigator.trigger("settings")
+        val pauseMenu = current?.runner?.let(PauseMenuBehavior::find)
+        if (pauseMenu != null) {
+            pauseMenu.toggle()
+            return false
         }
         return super.back()
     }

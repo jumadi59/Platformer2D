@@ -47,3 +47,13 @@ tasks.register('previewMain', JavaExec) {
     jvmArgs '-Djava.awt.headless=true'
     if (osName.contains('mac')) jvmArgs '-XstartOnFirstThread'
 }
+
+// Authored Menu/Settings render acceptance; never changes the startup scene.
+tasks.register('previewUi', JavaExec) {
+    dependsOn 'classes'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.example.platformer.UiScenePreviewKt'
+    args project(':game-shared').file('assets').absolutePath, rootProject.file('docs/evidence/menu-settings-redesign').absolutePath
+    jvmArgs '-Djava.awt.headless=true'
+    if (osName.contains('mac')) jvmArgs '-XstartOnFirstThread'
+}

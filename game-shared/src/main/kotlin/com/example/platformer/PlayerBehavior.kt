@@ -9,6 +9,7 @@ import com.jumbox.game.core.physics2d.RigidBody2DComponent
 import com.jumbox.game.core.physics2d.Vec2
 import com.jumbox.game.core.scene.DiagnosticSeverity
 import com.jumbox.game.core.scene.PhysicsContactEvent
+import com.jumbox.game.core.scene.PointLight2DComponent
 import com.jumbox.game.core.scene.RuntimeDiagnostic
 import com.jumbox.game.core.scene.SceneDimension
 import com.jumbox.game.core.ui.document.UiActionEvent
@@ -50,6 +51,7 @@ class PlayerBehavior : SchemaBehavior(), com.jumbox.game.core.scene.DamageReceiv
     private var elapsed = 0f
     private var enemiesDefeated = 0
     private val hudValues = mutableMapOf<String, String>()
+    private var lastHudSecond = -1
     private var grounded = false
     private var jumpRequested = false
     private var jumpHeld = false
@@ -60,7 +62,7 @@ class PlayerBehavior : SchemaBehavior(), com.jumbox.game.core.scene.DamageReceiv
     private var atGoal = false
 
     override fun onUiAction(event: UiActionEvent) {
-        if (joystickAction.isBlank() || event.action != joystickAction) return
+        if (joystickAction.isBlank() || event.action != joystickAction || PauseMenuBehavior.isOpen(context.runner)) return
         joystickX = ((event.payload["x"] as? UiValue.NumberValue)?.value?.toFloat() ?: 0f).coerceIn(-1f, 1f)
     }
 
@@ -89,9 +91,9 @@ class PlayerBehavior : SchemaBehavior(), com.jumbox.game.core.scene.DamageReceiv
         }
     }
     override fun onInput(action: String, isDown: Boolean) {
-        if (action == "pause" && isDown) { context.sceneNavigator.trigger("settings"); return }
+        // Pause is owned by PauseMenuBehavior; Retry stays available from its dialog.
         if (action == "restart" && isDown) restartRequested = true
-        if (action != jumpAction) return
+        if (action != jumpAction || (isDown && PauseMenuBehavior.isOpen(context.runner))) return
         val pressed = isDown && !jumpHeld
         jumpHeld = isDown
         if (pressed) jumpRequested = true
@@ -103,6 +105,7 @@ class PlayerBehavior : SchemaBehavior(), com.jumbox.game.core.scene.DamageReceiv
             when {
                 id.startsWith("gem-") && collected.add(id) -> {
                     context.runner.spawnedEntities[id]?.get<Sprite2DComponent>()?.isEnabled = false
+                    context.runner.spawnedEntities[id]?.get<PointLight2DComponent>()?.intensity = 0f
                     play(coinSound)
                 }
                 id == "checkpoint" && !checkpointActivated -> context.runner.spawnedEntities[id]?.let { flag ->
@@ -185,22 +188,28 @@ class PlayerBehavior : SchemaBehavior(), com.jumbox.game.core.scene.DamageReceiv
     }
     override fun onUpdate(delta: Float) {
         if (!won) elapsed += delta.coerceAtLeast(0f)
-        val values = mapOf(
-            "status" to when {
-                won -> "LEVEL COMPLETE!  Restart to play again"
-                atGoal -> "Collect all $requiredGems gems first!"
-                else -> if (checkpointActivated) "CHECKPOINT SAVED / Reach the green flag" else "Collect $requiredGems gems / Reach the green flag"
-            },
-            "health-value" to "$health / ${maxHealth.coerceAtLeast(1)}",
-            "gems-value" to "${collected.size} / $requiredGems",
-            "enemies-value" to "$enemiesDefeated / ${enemies().size}",
-            "timer-value" to "%02d:%02d".format(elapsed.toInt() / 60, elapsed.toInt() % 60),
-            "falls-value" to "FALLS $deaths"
-        )
-        values.forEach { (id, value) -> if (hudValues[id] != value && context.runner.setUiText("hud", id, value)) hudValues[id] = value }
+        updateHudText("status", when {
+            won -> "LEVEL COMPLETE!  Restart to play again"
+            atGoal -> "Collect all $requiredGems gems first!"
+            else -> if (checkpointActivated) "CHECKPOINT SAVED / Reach the green flag" else "Collect $requiredGems gems / Reach the green flag"
+        })
+        updateHudText("health-value", "$health/${maxHealth.coerceAtLeast(1)}")
+        updateHudText("gems-value", "${collected.size}/$requiredGems")
+        val enemyCount = context.runner.spawnedEntities.values.sumOf {
+            it.get<com.jumbox.game.core.scene.BehaviorComponent>()?.allInstances()?.count { behavior -> behavior is EnemyBehavior } ?: 0
+        }
+        updateHudText("enemies-value", "$enemiesDefeated/$enemyCount")
+        val second = elapsed.toInt()
+        if (second != lastHudSecond || "timer-value" !in hudValues) {
+            val minutes = (second / 60).toString().padStart(2, '0')
+            val seconds = (second % 60).toString().padStart(2, '0')
+            updateHudText("timer-value", "$minutes:$seconds")
+            lastHudSecond = second
+        }
+        updateHudText("falls-value", "FALLS $deaths")
     }
-    private fun enemies(): List<EnemyBehavior> = context.runner.spawnedEntities.values.flatMap {
-        it.get<com.jumbox.game.core.scene.BehaviorComponent>()?.allInstances()?.filterIsInstance<EnemyBehavior>() ?: emptyList()
+    private fun updateHudText(id: String, value: String) {
+        if (hudValues[id] != value && context.runner.setUiText("hud", id, value)) hudValues[id] = value
     }
     override fun applyDamage(amount: Float, sourceEntityId: String?): Boolean {
         if (won || respawnRequested || invulnerability > 0f || !amount.isFinite() || amount <= 0f) return false

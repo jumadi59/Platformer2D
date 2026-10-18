@@ -205,6 +205,60 @@ object ProjectBehaviorInitializer {
             factory = { com.example.platformer.MenuBehavior() }
         )
         registry.register(
+            id = "PauseMenuBehavior",
+            descriptor = BehaviorDescriptor(
+                id = "PauseMenuBehavior",
+                displayName = "PauseMenuBehavior",
+                description = "Custom behavior PauseMenuBehavior",
+                supportedDimensions = setOf(com.jumbox.game.core.scene.SceneDimension.TWO_D),
+                requiredComponents = listOf("UiCanvas"),
+                requiredActions = listOf(),
+                properties = listOf(
+                    BehaviorPropertyDescriptor(
+                        name = "pauseAction",
+                        displayName = "Toggle Pause Action",
+                        type = BehaviorPropertyType.STRING,
+                        defaultValue = "pause",
+                        enumOptions = listOf(),
+                        description = "",
+                        assetType = "",
+                        min = null, max = null
+                    ),
+                    BehaviorPropertyDescriptor(
+                        name = "showTrigger",
+                        displayName = "Show Dialog Trigger",
+                        type = BehaviorPropertyType.STRING,
+                        defaultValue = "pause_open",
+                        enumOptions = listOf(),
+                        description = "",
+                        assetType = "",
+                        min = null, max = null
+                    ),
+                    BehaviorPropertyDescriptor(
+                        name = "hideTrigger",
+                        displayName = "Hide Dialog Trigger",
+                        type = BehaviorPropertyType.STRING,
+                        defaultValue = "pause_close",
+                        enumOptions = listOf(),
+                        description = "",
+                        assetType = "",
+                        min = null, max = null
+                    ),
+                    BehaviorPropertyDescriptor(
+                        name = "gameplayCanvases",
+                        displayName = "Gameplay Canvas IDs (comma separated)",
+                        type = BehaviorPropertyType.STRING,
+                        defaultValue = "hud,gameplay-controls",
+                        enumOptions = listOf(),
+                        description = "",
+                        assetType = "",
+                        min = null, max = null
+                    ),
+                )
+            ),
+            factory = { com.example.platformer.PauseMenuBehavior() }
+        )
+        registry.register(
             id = "PlayerBehavior",
             descriptor = BehaviorDescriptor(
                 id = "PlayerBehavior",

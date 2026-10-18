@@ -43,6 +43,9 @@ fun main(args: Array<String>) {
                 p.onPhysicsContact(PhysicsContactEvent("player","gem-1",PhysicsContactPhase.ENTER,true,false))
                 p.applyDamage(1f,"enemy-1"); p.onUpdate(0f)
                 snapshot("encounter")
+                r.dispatchInput("pause", true); r.dispatchInput("pause", false); r.update(1f / 60f)
+                check(PauseMenuBehavior.isOpen(r)) { "Pause dialog did not open" }
+                snapshot("paused")
                 val errors = r.diagnostics.filter { it.severity == DiagnosticSeverity.ERROR }
                 reports += "$width x $height: errors=$errors; diagnostics=${r.diagnostics}"
                 check(errors.isEmpty()) { errors.toString() }

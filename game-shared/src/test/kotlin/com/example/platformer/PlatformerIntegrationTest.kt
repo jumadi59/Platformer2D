@@ -90,7 +90,7 @@ class PlatformerIntegrationTest {
         assertTrue(SceneFlowValidator.validate(flow, catalog).isEmpty())
         assertEquals("Menu", SceneDocument.parse(File(assets, "scenes/Menu.scene").readText()).name)
         assertEquals(catalog.startupSceneId, SceneDocument.parse(File(assets, "scenes/Menu.scene").readText()).sceneId)
-        for (path in listOf("menu", "settings", "platformer_hud")) {
+        for (path in listOf("menu", "settings", "platformer_hud", "platformer_controls", "pause_menu")) {
             val doc = UiDocumentCodec.parse(File(assets, "ui/layouts/$path.jui").readText())
             assertTrue(UiDocumentValidator.validate(doc).none { it.severity == UiDiagnostic.Severity.ERROR }, "$path UI is invalid: ${UiDocumentValidator.validate(doc)}")
             assertEquals(doc, UiDocumentCodec.parse(UiDocumentCodec.write(doc)))
@@ -179,7 +179,7 @@ class PlatformerIntegrationTest {
         try {
             r.render(RecordingRenderer2D(), 960, 540)
             val bounds = r.uiAccessibilityNodes().single { it.semantics.label == "Settings" }.bounds
-            val x = (bounds.x + bounds.width / 2).toInt(); val y = 540 - (bounds.y + bounds.height / 2).toInt()
+            val x = (bounds.x + bounds.width / 2).toInt(); val y = (bounds.y + bounds.height / 2).toInt()
             assertTrue(r.pointerDown(0, x, y)); assertTrue(r.pointerUp(0,x,y))
             assertTrue("settings" in routes.triggered)
             assertEquals(1, audio.count("button.wav"))
@@ -199,11 +199,19 @@ class PlatformerIntegrationTest {
             val main = assertIs<RuntimeScene>(game.getScene())
             assertEquals("Main", main.sceneDef.name)
             main.runner.player().onPhysicsContact(contact("gem-1"))
-            assertFalse(game.back(), "Back/Escape opens settings instead of exiting gameplay"); game.update(0f)
+            assertFalse(game.back(), "Back/Escape opens the pause dialog instead of exiting gameplay"); game.update(0f)
+            assertSame(main, game.getScene()); assertTrue(PauseMenuBehavior.isOpen(main.runner))
+            val frozenAt = main.runner.simulationTime
+            game.update(0.5f); assertEquals(frozenAt, main.runner.simulationTime, "Open pause dialog freezes gameplay time")
+            main.runner.dispatchInput("settings", true); main.runner.trigger("settings"); main.runner.dispatchInput("settings", false); game.update(0f)
             val settings = assertIs<RuntimeScene>(game.getScene())
             assertEquals("Settings", settings.sceneDef.name); assertTrue(main.runner.isPaused)
             assertTrue(settings.runner.sceneNavigator.trigger("back")); game.update(0f)
             assertSame(main, game.getScene()); assertFalse(main.runner.isPaused)
+            assertTrue(PauseMenuBehavior.isOpen(main.runner), "Returning from Settings keeps the pause dialog open")
+            main.runner.dispatchInput("pause_close", true); main.runner.dispatchInput("pause_close", false); game.update(0f)
+            assertFalse(PauseMenuBehavior.isOpen(main.runner))
+            game.update(0.1f); assertTrue(main.runner.simulationTime > frozenAt, "Resume restores gameplay time")
             assertFalse(main.runner.spawnedEntities.getValue("gem-1").get<Sprite2DComponent>()!!.isEnabled)
         } finally { game.dispose() }
     }
@@ -224,7 +232,7 @@ class PlatformerIntegrationTest {
             val menu = assertIs<RuntimeScene>(game.getScene())
             menu.runner.render(RecordingRenderer2D(), 960, 540)
             val bounds = menu.runner.uiAccessibilityNodes().single { it.semantics.label == "Settings" }.bounds
-            engine.input.touch((bounds.x + bounds.width / 2).toInt(), (bounds.y + bounds.height / 2).toInt())
+            engine.input.touch((bounds.x + bounds.width / 2).toInt(), 540 - (bounds.y + bounds.height / 2).toInt())
             assertTrue(engine.input.down(), "Visible Settings button must accept host pointer")
             assertTrue(engine.input.up()); game.update(0f)
             assertEquals("Settings", assertIs<RuntimeScene>(game.getScene()).sceneDef.name)
@@ -232,7 +240,7 @@ class PlatformerIntegrationTest {
                 val scene = assertIs<RuntimeScene>(game.getScene())
                 scene.runner.render(RecordingRenderer2D(), 960, 540)
                 val hit = scene.runner.uiAccessibilityNodes().single { it.semantics.label == label }.bounds
-                engine.input.touch((hit.x + hit.width / 2).toInt(), (hit.y + hit.height / 2).toInt())
+                engine.input.touch((hit.x + hit.width / 2).toInt(), 540 - (hit.y + hit.height / 2).toInt())
                 assertTrue(engine.input.down(), "Host pointer down: $label")
                 assertTrue(engine.input.up(), "Host pointer up: $label")
                 game.update(0f)
@@ -243,9 +251,14 @@ class PlatformerIntegrationTest {
             val main = assertIs<RuntimeScene>(game.getScene())
             assertEquals("Main", main.sceneDef.name)
             assertFalse(game.back()); game.update(0f)
+            assertTrue(PauseMenuBehavior.isOpen(main.runner))
+            tap("Settings")
+            assertEquals("Settings", assertIs<RuntimeScene>(game.getScene()).sceneDef.name)
             tap("Back")
             assertSame(main, game.getScene())
             assertFalse(main.runner.isPaused)
+            tap("Resume")
+            assertFalse(PauseMenuBehavior.isOpen(main.runner))
             repeat(2) {
                 game.pause()
                 assertTrue(main.runner.isPaused)
@@ -253,10 +266,11 @@ class PlatformerIntegrationTest {
                 game.show()
                 assertFalse(main.runner.isPaused)
             }
-            assertFalse(game.back()); game.update(0f)
-            tap("Back")
-            assertSame(main, game.getScene())
-            assertTrue(game.navigationDispatcher?.lastDiagnostic == null)
+            tap("Pause")
+            assertTrue(PauseMenuBehavior.isOpen(main.runner))
+            tap("Main Menu")
+            assertEquals("Menu", assertIs<RuntimeScene>(game.getScene()).sceneDef.name)
+            assertNull(game.navigationDispatcher?.lastDiagnostic)
         } finally { game.dispose() }
         assertNull(engine.input.touchController, "Disposal restores the host pointer route")
     }
@@ -340,19 +354,55 @@ class PlatformerIntegrationTest {
                 assertTrue(r.setUiText("hud", "health-value", "2 / 3"))
                 assertTrue(r.setUiText("hud", "gems-value", "1 / 6"))
                 assertTrue(r.setUiText("hud", "timer-value", "00:02"))
-                for (label in listOf("SETTINGS","MENU","Jump")) {
+                assertTrue(r.uiAccessibilityNodes().none { it.semantics.label in setOf("RETRY", "SETTINGS", "MENU") }, "HUD only keeps the pause button")
+                fun tap(label: String) {
+                    r.render(RecordingRenderer2D(), w, h)
                     val bounds = r.uiAccessibilityNodes().single { it.semantics.label == label }.bounds
                     assertTrue(bounds.x >= 0 && bounds.y >= 0 && bounds.x + bounds.width <= w + 1 && bounds.y + bounds.height <= h + 1, "$label outside $w x $h: $bounds")
                     // The pinned runner consumes framebuffer coordinates; the native host converts separately.
                     val x=(bounds.x+bounds.width/2).toInt(); val y=(bounds.y+bounds.height/2).toInt()
                     assertTrue(r.pointerDown(0,x,y), "$label pointer down at $x,$y on $w x $h")
                     assertTrue(r.pointerUp(0,x,y), "$label pointer up")
+                    r.stepOnce()
                 }
-                assertTrue("settings" in routes.triggered)
-                assertTrue("menu" in routes.triggered)
+                val pause = PauseMenuBehavior.find(r)!!
+                tap("Jump"); assertFalse(pause.isOpen)
+                tap("Pause"); assertTrue(pause.isOpen)
+                val jump = r.uiAccessibilityNodes().single { it.semantics.label == "Jump" }.bounds
+                assertFalse(r.pointerDown(1, (jump.x + jump.width / 2).toInt(), (jump.y + jump.height / 2).toInt()), "HUD controls are blocked behind the dialog")
+                tap("Settings"); assertTrue("settings" in routes.triggered)
+                tap("Retry"); assertFalse(pause.isOpen); assertEquals("0", p.gameplayValue("gems"), "Retry from the dialog restarts the level")
+                tap("Pause"); tap("Resume"); assertFalse(pause.isOpen)
+                tap("Pause"); tap("Main Menu"); assertTrue("menu" in routes.triggered)
                 assertTrue(r.diagnostics.none { it.message.contains("font", true) && it.severity == DiagnosticSeverity.WARNING }, r.diagnostics.toString())
             } finally { r.dispose() }
         }
+    }
+
+    @Test fun separateLiveControlsKeepSimultaneousStickAndJumpAndCancelIndependently() {
+        com.jumbox.game.core.Engine.game.resize(960, 540)
+        val r = runner("Main")
+        try {
+            assertEquals(UiCanvasRenderMode.CACHED, r.spawnedEntities.getValue("hud").get<UiCanvasComponent>()!!.renderMode)
+            assertEquals(UiCanvasRenderMode.DIRECT, r.spawnedEntities.getValue("gameplay-controls").get<UiCanvasComponent>()!!.renderMode)
+            r.render(RecordingRenderer2D(), 960, 540)
+            assertTrue(r.pointerDown(11, 84, 84), "Stick down through topmost controls canvas")
+            assertTrue(r.pointerMoved(11, 125, 84, 41f, 0f))
+            val jump = r.uiAccessibilityNodes().single { it.semantics.label == "Jump" }.bounds
+            val jx = (jump.x + jump.width / 2).toInt()
+            val jy = (jump.y + jump.height / 2).toInt()
+            assertTrue(r.pointerDown(12, jx, jy))
+            assertTrue(r.input.isDown("jump"))
+            r.stepOnce()
+            val body = r.spawnedEntities.getValue("player").get<RigidBody2DComponent>()!!.body!!
+            assertTrue(body.velocity.x > 0f, "Stick moves the player while Jump has separate capture")
+            assertTrue(r.pointerCancelled(11))
+            r.stepOnce()
+            assertEquals(0f, body.velocity.x)
+            assertTrue(r.input.isDown("jump"), "Cancelling stick must preserve the other pointer")
+            assertTrue(r.pointerUp(12, jx, jy))
+            assertFalse(r.input.isDown("jump"))
+        } finally { r.dispose() }
     }
 
     @Test fun nativeMainHudJumpAndSettingsAcceptVisibleTouchPositions() {
@@ -364,8 +414,8 @@ class PlatformerIntegrationTest {
             val menu = assertIs<RuntimeScene>(game.getScene())
             assertTrue(menu.runner.sceneNavigator.trigger("play")); game.update(0f)
             val main = assertIs<RuntimeScene>(game.getScene())
-            main.runner.render(RecordingRenderer2D(),960,540)
-            for (label in listOf("Jump", "SETTINGS")) {
+            for (label in listOf("Jump", "Pause", "Settings")) {
+                main.runner.render(RecordingRenderer2D(),960,540)
                 val b = main.runner.uiAccessibilityNodes().single { it.semantics.label == label }.bounds
                 engine.input.touch((b.x+b.width/2).toInt(),540-(b.y+b.height/2).toInt())
                 assertTrue(engine.input.down(), "Native $label down")
